@@ -3,6 +3,10 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 
+bool shouldTriggerAlarm(double distance, double radius, bool alarmAlreadyActive) {
+  return distance <= radius && !alarmAlreadyActive;
+}
+
 // Esta función arranca el handler dentro del isolate que usa el foreground service.
 @pragma('vm:entry-point')
 void startGeofenceCallback() {
@@ -24,6 +28,29 @@ class GeofenceTaskHandler extends TaskHandler {
     destinoLng = await FlutterForegroundTask.getData<double>(key: 'lng');
     radioMetros =
         await FlutterForegroundTask.getData<double>(key: 'radio') ?? 500;
+    _alarmSonando = false;
+  }
+
+  Future<void> _triggerAlarm() async {
+    if (_alarmSonando) return;
+
+    _alarmSonando = true;
+
+    FlutterForegroundTask.updateService(
+      notificationTitle: 'Duerme Metropolitano',
+      notificationText: '¡Llegaste al destino! La alarma está activa.',
+    );
+
+    try {
+      await _player.stop();
+      await _player.setReleaseMode(ReleaseMode.loop);
+      await _player.play(AssetSource('alarm.mp3'));
+    } catch (e) {
+      FlutterForegroundTask.updateService(
+        notificationTitle: 'Duerme Metropolitano',
+        notificationText: '¡Llegaste al destino! El audio no pudo iniciarse: $e',
+      );
+    }
   }
 
   @override
@@ -65,19 +92,8 @@ class GeofenceTaskHandler extends TaskHandler {
       return;
     }
 
-    if (distancia <= radioMetros && !_alarmSonando) {
-      _alarmSonando = true;
-      try {
-        await _player.setReleaseMode(ReleaseMode.loop);
-        await _player.play(AssetSource('alarm.mp3'));
-      } catch (e) {
-        // Si el audio falla (ej. falta el archivo assets/alarm.mp3), esto
-        // te lo dice explícitamente en vez de quedarse en silencio.
-        FlutterForegroundTask.updateService(
-          notificationTitle: 'Duerme Metropolitano',
-          notificationText: 'ERROR audio: $e',
-        );
-      }
+    if (shouldTriggerAlarm(distancia, radioMetros, _alarmSonando)) {
+      await _triggerAlarm();
     }
   }
 
