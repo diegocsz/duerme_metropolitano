@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:alarm/alarm.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -9,8 +10,9 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import 'geofence_task_handler.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Alarm.init();
   FlutterForegroundTask.initCommunicationPort();
   runApp(const MyApp());
 }

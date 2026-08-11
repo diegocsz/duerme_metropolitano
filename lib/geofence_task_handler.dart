@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:audioplayers/audioplayers.dart';
+
+import 'package:alarm/alarm.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -14,7 +15,7 @@ void startGeofenceCallback() {
 }
 
 class GeofenceTaskHandler extends TaskHandler {
-  final AudioPlayer _player = AudioPlayer();
+  static const int _alarmId = 1;
   bool _alarmSonando = false;
 
   double? destinoLat;
@@ -42,9 +43,28 @@ class GeofenceTaskHandler extends TaskHandler {
     );
 
     try {
-      await _player.stop();
-      await _player.setReleaseMode(ReleaseMode.loop);
-      await _player.play(AssetSource('alarm.mp3'));
+      await Alarm.stop(_alarmId);
+      await Alarm.set(
+        alarmSettings: AlarmSettings(
+          id: _alarmId,
+          dateTime: DateTime.now().add(const Duration(seconds: 1)),
+          assetAudioPath: 'assets/alarm.mp3',
+          loopAudio: true,
+          vibrate: true,
+          warningNotificationOnKill: true,
+          androidFullScreenIntent: true,
+          volumeSettings: VolumeSettings.fixed(
+            volume: 1.0,
+            volumeEnforced: true,
+            showSystemUI: false,
+          ),
+          notificationSettings: const NotificationSettings(
+            title: 'Duerme Metropolitano',
+            body: '¡Llegaste al destino! Pulsa detener para apagar la alarma.',
+            stopButton: 'Detener',
+          ),
+        ),
+      );
     } catch (e) {
       FlutterForegroundTask.updateService(
         notificationTitle: 'Duerme Metropolitano',
@@ -99,8 +119,7 @@ class GeofenceTaskHandler extends TaskHandler {
 
   @override
   Future<void> onDestroy(DateTime timestamp) async {
-    await _player.stop();
-    await _player.dispose();
+    await Alarm.stop(_alarmId);
   }
 
   // Se llama cuando el usuario toca la notificación (opcional para el MVP).
